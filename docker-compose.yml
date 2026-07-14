@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: health_postgres
+    environment:
+      POSTGRES_USER: healthuser
+      POSTGRES_PASSWORD: healthpass
+      POSTGRES_DB: health_appointment
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U healthuser -d health_appointment']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: health_redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: health_backend
+    ports:
+      - '5000:5000'
+    environment:
+      DATABASE_URL: postgresql://healthuser:healthpass@postgres:5432/health_appointment?schema=public
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: production
+      PORT: 5000
+      FRONTEND_URL: http://localhost:5173
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: health_worker
+    command: npm run worker
+    environment:
+      DATABASE_URL: postgresql://healthuser:healthpass@postgres:5432/health_appointment?schema=public
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      - backend
+      - redis
+
+volumes:
+  postgres_data:
+  redis_data:
