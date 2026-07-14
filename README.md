@@ -116,6 +116,4 @@ See `backend/.env.example` and `frontend/.env.example` for all configuration opt
 - [Gemini AI Setup](docs/GEMINI_SETUP.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
 
-## License
 
-MIT — College Major Project
